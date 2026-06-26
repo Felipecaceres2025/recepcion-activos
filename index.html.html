@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Recepción Bandejas — Castaño</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #F5F4F1;
+  --surface: #FFFFFF;
+  --border: #E2E0DA;
+  --border-strong: #C8C5BC;
+  --text: #1A1916;
+  --muted: #7A7870;
+  --accent: #C8401A;
+  --accent-bg: #FBF0ED;
+  --accent-border: #F0C4B8;
+  --success: #2D6A3F;
+  --success-bg: #EBF5EE;
+  --warning-bg: #FFF8EC;
+  --warning-border: #F5D97A;
+  --warning-text: #7A5A00;
+  --r: 10px;
+  --font: -apple-system,'SF Pro Text','Helvetica Neue',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--text)}
+.app{display:flex;flex-direction:column;height:100vh;max-width:480px;margin:0 auto}
+.header{background:#1A1916;color:#fff;padding:13px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.header-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.header-title{font-size:15px;font-weight:600;letter-spacing:-.3px}
+.header-sub{font-size:12px;color:#777;margin-left:auto}
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.tab{flex:1;padding:11px 8px;font-size:13px;font-weight:500;color:var(--muted);border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.content{flex:1;overflow-y:auto;padding:14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.card-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px}
+.camera-zone{border:2px dashed var(--border-strong);border-radius:var(--r);background:#FAFAF8;cursor:pointer;overflow:hidden;position:relative;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;transition:border-color .15s}
+.camera-zone:active{border-color:var(--accent);background:var(--accent-bg)}
+.camera-zone.has-img{border-style:solid;border-color:var(--border)}
+.camera-zone img{width:100%;height:200px;object-fit:cover;display:block}
+.cam-label{font-size:13px;color:var(--muted);text-align:center;padding:0 16px}
+.camera-icon{font-size:32px;line-height:1}
+#file-input{display:none}
+.scan-btn{width:100%;height:46px;background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-size:15px;font-weight:600;cursor:pointer;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px}
+.scan-btn:disabled{opacity:.35;cursor:not-allowed}
+.scan-btn:not(:disabled):active{background:#a83312}
+.scanning-overlay{display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px}
+.scanning-overlay.visible{display:flex}
+.spinner{width:28px;height:28px;border:3px solid var(--accent-border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.scanning-label{font-size:13px;color:var(--muted)}
+.result-banner{display:none;padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:10px;line-height:1.5}
+.result-banner.ok{background:var(--success-bg);color:var(--success);border:1px solid #b8dfc5}
+.result-banner.warn{background:var(--warning-bg);color:var(--warning-text);border:1px solid var(--warning-border)}
+.result-banner.err{background:#FEF2F2;color:#991B1B;border:1px solid #FECACA}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:500}
+.field input,.field select{width:100%;height:42px;padding:0 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;font-family:var(--font);background:#FAFAF8;color:var(--text);appearance:none;-webkit-appearance:none}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent);background:#fff}
+.field input.af{border-color:#b8dfc5;background:#f0faf4}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.gh{display:grid;grid-template-columns:1fr 68px 68px 32px;gap:6px;padding:0 2px;margin-bottom:4px}
+.gh span{font-size:11px;color:var(--muted);font-weight:500}
+.gr{display:grid;grid-template-columns:1fr 68px 68px 32px;gap:6px;margin-bottom:7px;align-items:center}
+.gr input{height:38px;padding:0 8px;font-size:14px}
+.gr input.af{border-color:#b8dfc5;background:#f0faf4}
+.del-btn{width:32px;height:38px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--muted);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center}
+.del-btn:active{background:#fee2e2;border-color:#fca5a5;color:#b91c1c}
+.add-btn{width:100%;height:36px;border:1px dashed var(--border-strong);border-radius:8px;background:transparent;color:var(--muted);font-size:13px;cursor:pointer;margin-top:2px}
+.tg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
+.tc{background:var(--bg);border-radius:8px;padding:10px;text-align:center}
+.tc.main{background:var(--accent-bg);border:1px solid var(--accent-border)}
+.tl{font-size:11px;color:var(--muted);margin-bottom:2px}
+.tv{font-size:20px;font-weight:700;color:var(--text)}
+.tc.main .tv{color:var(--accent)}
+.tc.main .tl{color:#b03010}
+.submit-btn{width:100%;height:48px;background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-size:16px;font-weight:600;cursor:pointer;margin-top:4px}
+.submit-btn:disabled{opacity:.35;cursor:not-allowed}
+.submit-btn:not(:disabled):active{background:#a83312}
+.hist-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.hist-count{font-size:13px;color:var(--muted)}
+.exp-btn{height:34px;padding:0 14px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;cursor:pointer;font-weight:500}
+.hist-empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px}
+.hi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:13px;margin-bottom:10px}
+.hi-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px}
+.hi-meta{font-size:12px;color:var(--muted)}
+.hi-name{font-size:14px;font-weight:600;margin-top:2px}
+.hi-gdnum{font-size:11px;font-weight:600;color:var(--accent);margin-top:2px}
+.hi-big{font-size:22px;font-weight:700;line-height:1}
+.hi-unit{font-size:11px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px}
+.chip{font-size:11px;padding:3px 8px;border-radius:20px;background:var(--bg);border:1px solid var(--border);color:var(--muted)}
+.chip.red{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent);font-weight:600}
+.sg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:7px}
+.sc{background:var(--bg);border-radius:6px;padding:5px 8px;text-align:center}
+.sl{font-size:10px;color:var(--muted)}
+.sv{font-size:14px;font-weight:600}
+.hi-det{font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:6px;line-height:1.8}
+.toast{position:fixed;bottom:20px;left:14px;right:14px;background:#1A1916;color:#fff;padding:14px 16px;border-radius:var(--r);font-size:14px;font-weight:500;text-align:center;z-index:999;display:none;max-width:480px;margin:0 auto}
+.setup-card{border:1px solid var(--warning-border);background:var(--warning-bg);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.setup-title{font-size:13px;font-weight:600;color:var(--warning-text);margin-bottom:6px}
+.setup-desc{font-size:12px;color:var(--warning-text);margin-bottom:10px;line-height:1.5}
+.setup-save-btn{width:100%;height:38px;border:1px solid var(--warning-border);border-radius:8px;background:transparent;color:var(--warning-text);font-size:13px;font-weight:600;cursor:pointer;margin-top:8px}
+.setup-save-btn:active{background:var(--warning-border)}
+.key-ok{display:none;font-size:12px;color:var(--success);margin-top:6px}
+.badge-free{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;background:#e8f5e9;border:1px solid #b8dfc5;color:var(--success);font-weight:600;margin-left:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-dot"></div>
+    <span class="header-title">Recepción Bandejas</span>
+    <span class="header-sub">Interplanta Quilicura</span>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('registro')">Registrar</button>
+    <button class="tab" onclick="showTab('historial')">Historial</button>
+  </div>
+
+  <div class="content" id="content-registro">
+    <div class="setup-card" id="setup-card">
+      <div class="setup-title" id="setup-title">⚙ Configurar API Key <span class="badge-free">Gratis</span></div>
+      <div class="setup-desc">Usa Gemini de Google — gratis hasta 1.500 lecturas por día. Obtén tu clave en <strong>aistudio.google.com</strong> → Get API Key. Se guarda solo en este dispositivo.</div>
+      <div class="field" style="margin-bottom:0">
+        <label>Google Gemini API Key</label>
+        <input type="password" id="api-key-input" placeholder="AIza..." autocomplete="off">
+      </div>
+      <button class="setup-save-btn" onclick="saveKey()">Guardar clave</button>
+      <div class="key-ok" id="key-ok">✓ Clave guardada — lista para usar</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Foto de la guía</div>
+      <div class="camera-zone" id="camera-zone" onclick="document.getElementById('file-input').click()">
+        <div class="scanning-overlay" id="scanning-overlay">
+          <div class="spinner"></div>
+          <div class="scanning-label">Leyendo guía con Gemini...</div>
+        </div>
+        <div id="cam-placeholder" style="display:flex;flex-direction:column;align-items:center;gap:8px">
+          <div class="camera-icon">📷</div>
+          <div class="cam-label">Toca para fotografiar la guía de despacho</div>
+        </div>
+        <img id="preview-img" style="display:none">
+      </div>
+      <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handlePhoto(event)">
+      <div class="result-banner" id="result-banner"></div>
+      <button class="scan-btn" id="scan-btn" onclick="scanGuia()" disabled>Leer guía con IA</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Turno</div>
+      <div class="row2">
+        <div class="field">
+          <label>Supervisor</label>
+          <select id="sup" onchange="checkSubmit()">
+            <option value="">— Seleccionar —</option>
+            <option>Bryan Hidalgo</option>
+            <option>Guillermo Angulo</option>
+            <option>Luis Rodriguez</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Turno</label>
+          <select id="turno" onchange="checkSubmit()">
+            <option value="">— Seleccionar —</option>
+            <option>T1 (22–07)</option>
+            <option>T2 (07–15)</option>
+            <option>T3 (15–22)</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Hora llegada</label>
+          <input type="time" id="hora-llegada" onchange="checkSubmit()">
+        </div>
+        <div class="field">
+          <label>Hora salida</label>
+          <input type="time" id="hora-salida">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Camión</div>
+      <div class="row3">
+        <div class="field">
+          <label>Origen</label>
+          <input type="text" id="origen" placeholder="Osorno" oninput="checkSubmit()">
+        </div>
+        <div class="field">
+          <label>Patente</label>
+          <input type="text" id="patente" placeholder="KDXL-51" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase();checkSubmit()">
+        </div>
+        <div class="field">
+          <label>N° Sello</label>
+          <input type="text" id="sello" placeholder="3420781" oninput="checkSubmit()">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Guías de despacho</div>
+      <div class="gh">
+        <span>N° guía</span>
+        <span style="text-align:right">Bandejas</span>
+        <span style="text-align:right">Merma</span>
+        <span></span>
+      </div>
+      <div id="guias-list"></div>
+      <button class="add-btn" onclick="addGuia()">+ Agregar guía</button>
+      <div class="tg">
+        <div class="tc main"><div class="tl">Bandejas</div><div class="tv" id="tot-bdj">0</div></div>
+        <div class="tc"><div class="tl">Merma</div><div class="tv" id="tot-mrm">0</div></div>
+        <div class="tc"><div class="tl">Pallets</div><div class="tv" id="tot-plt">—</div></div>
+      </div>
+      <div class="field" style="margin-top:10px;margin-bottom:0">
+        <label>Pallets recibidos</label>
+        <input type="number" id="pallets" placeholder="0" min="0" oninput="calcTotals();checkSubmit()">
+      </div>
+    </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="registrar()" disabled>Registrar recepción</button>
+    <div style="height:24px"></div>
+  </div>
+
+  <div class="content" id="content-historial" style="display:none">
+    <div class="hist-bar">
+      <span class="hist-count" id="hist-count">0 recepciones</span>
+      <button class="exp-btn" onclick="exportExcel()">⬇ Excel</button>
+    </div>
+    <div id="hist-list"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let guias = [];
+let hist = JSON.parse(localStorage.getItem('bdj_hist_v3') || '[]');
+let photoBase64 = null;
+let photoMime = 'image/jpeg';
+
+function getKey() { return localStorage.getItem('bdj_gemini_key') || ''; }
+
+function saveKey() {
+  const k = document.getElementById('api-key-input').value.trim();
+  if (!k || k.length < 10) { showToast('Clave inválida — clave inválida o muy corta'); return; }
+  localStorage.setItem('bdj_gemini_key', k);
+  document.getElementById('key-ok').style.display = 'block';
+  document.getElementById('setup-card').style.cssText += ';border-color:#b8dfc5;background:var(--success-bg)';
+  document.getElementById('setup-title').innerHTML = '✓ API Key configurada <span class="badge-free">Gratis</span>';
+  document.getElementById('setup-title').style.color = 'var(--success)';
+}
+
+function initKeyUI() {
+  const k = getKey();
+  if (!k) return;
+  document.getElementById('setup-title').innerHTML = '✓ API Key configurada <span class="badge-free">Gratis</span>';
+  document.getElementById('setup-title').style.color = 'var(--success)';
+  document.getElementById('setup-card').style.cssText += ';border-color:#b8dfc5;background:var(--success-bg)';
+  document.getElementById('api-key-input').value = k.slice(0, 8) + '••••••••••';
+  document.getElementById('key-ok').style.display = 'block';
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', ['registro','historial'][i] === name));
+  document.getElementById('content-registro').style.display = name === 'registro' ? 'block' : 'none';
+  document.getElementById('content-historial').style.display = name === 'historial' ? 'block' : 'none';
+  if (name === 'historial') renderHist();
+}
+
+function handlePhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  photoMime = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const dataUrl = ev.target.result;
+    photoBase64 = dataUrl.split(',')[1];
+    const img = document.getElementById('preview-img');
+    img.src = dataUrl; img.style.display = 'block';
+    document.getElementById('cam-placeholder').style.display = 'none';
+    document.getElementById('camera-zone').classList.add('has-img');
+    document.getElementById('scan-btn').disabled = false;
+    hideBanner();
+  };
+  reader.readAsDataURL(file);
+}
+
+async function scanGuia() {
+  const key = getKey();
+  if (!key) { showBanner('err', 'Primero configura tu API Key de Gemini arriba.'); return; }
+  if (!photoBase64) { showBanner('err', 'Primero toma una foto de la guía.'); return; }
+
+  document.getElementById('scanning-overlay').classList.add('visible');
+  document.getElementById('preview-img').style.display = 'none';
+  document.getElementById('scan-btn').disabled = true;
+  hideBanner();
+
+  const prompt = `Eres un sistema OCR especializado en guías de despacho de Castaño (Elaboradora de Alimentos Frutale Limitada, RUT 79.746.250-0).
+
+Extrae estos datos de la imagen y responde SOLO con JSON válido, sin texto adicional ni backticks:
+
+{
+  "num_guia": "número de la guía de despacho",
+  "fecha_guia": "fecha en la guía dd.mm.yyyy",
+  "origen": "ciudad del destinatario (ej: Osorno, Concepción, Chillán)",
+  "patente": "patente del camión si aparece en el documento",
+  "sello": "número o código de sello (puede aparecer como KDXL-51 u otro código en descripción)",
+  "bandejas": número_entero,
+  "merma": número_entero,
+  "confianza": "alta|media|baja"
+}
+
+Reglas de extracción:
+- bandejas: suma BB VACIAS + BANDEJAS + BANDEJAS POLLERA (todo tipo de bandeja no-merma)
+- merma: suma BB MERMA + MERMA PATAGONIA
+- Si un campo no existe en el documento, usa null
+- Responde ÚNICAMENTE el objeto JSON`;
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
+    const body = {
+      contents: [{
+        parts: [
+          { inline_data: { mime_type: photoMime, data: photoBase64 } },
+          { text: prompt }
+        ]
+      }],
+      generationConfig: { temperature: 0, maxOutputTokens: 500 }
+    };
+
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    const data = await resp.json();
+    document.getElementById('scanning-overlay').classList.remove('visible');
+    document.getElementById('preview-img').style.display = 'block';
+    document.getElementById('scan-btn').disabled = false;
+
+    if (!resp.ok) {
+      const msg = data.error?.message || ('Error ' + resp.status);
+      showBanner('err', 'Error Gemini: ' + msg);
+      return;
+    }
+
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    applyExtracted(parsed);
+
+  } catch (err) {
+    document.getElementById('scanning-overlay').classList.remove('visible');
+    document.getElementById('preview-img').style.display = 'block';
+    document.getElementById('scan-btn').disabled = false;
+    showBanner('err', 'Error de conexión: ' + err.message);
+  }
+}
+
+function applyExtracted(d) {
+  const setAF = (id, val) => {
+    if (val !== null && val !== undefined && val !== '') {
+      const el = document.getElementById(id);
+      if (el) { el.value = val; el.classList.add('af'); }
+    }
+  };
+  setAF('origen', d.origen);
+  setAF('patente', d.patente);
+  setAF('sello', d.sello);
+
+  guias = [];
+  if (d.num_guia) {
+    guias.push({ id: Date.now(), num: String(d.num_guia), bandejas: String(d.bandejas ?? ''), merma: String(d.merma ?? ''), auto: true });
+  }
+  renderGuias();
+  calcTotals();
+  checkSubmit();
+
+  const conf = d.confianza || 'media';
+  const labels = { alta: '✓ Datos extraídos correctamente', media: '⚠ Revisa los datos antes de registrar', baja: '⚠ Confianza baja — verifica todo manualmente' };
+  const tipo = conf === 'alta' ? 'ok' : 'warn';
+  showBanner(tipo, `${labels[conf]} · GD ${d.num_guia || '?'} · ${d.bandejas ?? 0} bandejas${d.merma ? ' · ' + d.merma + ' merma' : ''}`);
+}
+
+function showBanner(type, msg) {
+  const el = document.getElementById('result-banner');
+  el.className = 'result-banner ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideBanner() { document.getElementById('result-banner').style.display = 'none'; }
+
+function addGuia(num='', bdj='', mrm='', auto=false) {
+  guias.push({ id: Date.now(), num, bandejas: String(bdj), merma: String(mrm), auto });
+  renderGuias();
+}
+
+function removeGuia(id) {
+  guias = guias.filter(g => g.id !== id);
+  renderGuias();
+}
+
+function updateGuia(id, field, val) {
+  guias = guias.map(g => g.id === id ? { ...g, [field]: val, auto: false } : g);
+  calcTotals(); checkSubmit();
+}
+
+function renderGuias() {
+  const list = document.getElementById('guias-list');
+  list.innerHTML = '';
+  guias.forEach(g => {
+    const row = document.createElement('div');
+    row.className = 'gr';
+    const af = g.auto ? ' af' : '';
+    row.innerHTML = `
+      <input type="text" placeholder="572298" value="${g.num}" inputmode="numeric" class="${af}"
+        oninput="updateGuia(${g.id},'num',this.value)">
+      <input type="number" placeholder="0" value="${g.bandejas}" min="0" inputmode="numeric" class="${af}"
+        style="text-align:right" oninput="updateGuia(${g.id},'bandejas',this.value)">
+      <input type="number" placeholder="0" value="${g.merma}" min="0" inputmode="numeric" class="${af}"
+        style="text-align:right" oninput="updateGuia(${g.id},'merma',this.value)">
+      <button class="del-btn" onclick="removeGuia(${g.id})">×</button>`;
+    list.appendChild(row);
+  });
+  calcTotals(); checkSubmit();
+}
+
+function calcTotals() {
+  const tb = guias.reduce((s, g) => s + (parseInt(g.bandejas) || 0), 0);
+  const tm = guias.reduce((s, g) => s + (parseInt(g.merma) || 0), 0);
+  const tp = parseInt(document.getElementById('pallets').value) || 0;
+  document.getElementById('tot-bdj').textContent = tb;
+  document.getElementById('tot-mrm').textContent = tm;
+  document.getElementById('tot-plt').textContent = tp || '—';
+  return { tb, tm, tp };
+}
+
+function checkSubmit() {
+  const ok = document.getElementById('sup').value &&
+             document.getElementById('turno').value &&
+             document.getElementById('hora-llegada').value &&
+             guias.length > 0 && guias.some(g => g.num.trim());
+  document.getElementById('submit-btn').disabled = !ok;
+}
+
+function registrar() {
+  const { tb, tm, tp } = calcTotals();
+  const now = new Date();
+  const rec = {
+    id: Date.now(),
+    fecha: now.toLocaleDateString('es-CL'),
+    hora_reg: now.toLocaleTimeString('es-CL', { hour:'2-digit', minute:'2-digit' }),
+    supervisor: document.getElementById('sup').value,
+    turno: document.getElementById('turno').value,
+    hora_llegada: document.getElementById('hora-llegada').value,
+    hora_salida: document.getElementById('hora-salida').value,
+    origen: document.getElementById('origen').value,
+    patente: document.getElementById('patente').value,
+    sello: document.getElementById('sello').value,
+    bandejas: tb, merma: tm, pallets: tp,
+    guias: guias.map(g => ({ num: g.num, bandejas: parseInt(g.bandejas)||0, merma: parseInt(g.merma)||0 }))
+  };
+  hist.unshift(rec);
+  localStorage.setItem('bdj_hist_v3', JSON.stringify(hist));
+
+  guias = [];
+  ['sup','turno','hora-llegada','hora-salida','origen','patente','sello','pallets'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = ''; el.classList.remove('af');
+  });
+  photoBase64 = null;
+  document.getElementById('preview-img').style.display = 'none';
+  document.getElementById('cam-placeholder').style.display = 'flex';
+  document.getElementById('camera-zone').classList.remove('has-img');
+  document.getElementById('scan-btn').disabled = true;
+  hideBanner();
+  renderGuias();
+  showToast('✓ ' + tb + ' bandejas registradas');
+}
+
+function renderHist() {
+  const el = document.getElementById('hist-list');
+  document.getElementById('hist-count').textContent = hist.length + (hist.length === 1 ? ' recepción' : ' recepciones');
+  if (!hist.length) { el.innerHTML = '<div class="hist-empty">Sin registros todavía.</div>'; return; }
+  el.innerHTML = hist.map(r => `
+    <div class="hi">
+      <div class="hi-top">
+        <div>
+          <div class="hi-meta">${r.fecha} · ${r.hora_reg}</div>
+          <div class="hi-name">${r.supervisor}</div>
+          <div class="hi-gdnum">${r.guias.map(g=>'GD '+g.num).join(' · ')}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="hi-big">${r.bandejas}</div>
+          <div class="hi-unit">bandejas</div>
+        </div>
+      </div>
+      <div class="chips">
+        <span class="chip red">${r.turno}</span>
+        ${r.origen?`<span class="chip">${r.origen}</span>`:''}
+        ${r.patente?`<span class="chip">${r.patente}</span>`:''}
+        ${r.sello?`<span class="chip">Sello ${r.sello}</span>`:''}
+        ${r.hora_llegada?`<span class="chip">↓${r.hora_llegada}${r.hora_salida?' → '+r.hora_salida:''}</span>`:''}
+      </div>
+      <div class="sg">
+        <div class="sc"><div class="sl">Bandejas</div><div class="sv">${r.bandejas}</div></div>
+        <div class="sc"><div class="sl">Merma</div><div class="sv">${r.merma}</div></div>
+        <div class="sc"><div class="sl">Pallets</div><div class="sv">${r.pallets||'—'}</div></div>
+      </div>
+      <div class="hi-det">${r.guias.map(g=>`GD ${g.num}: ${g.bandejas} bdj${g.merma?' + '+g.merma+' merma':''}`).join('<br>')}</div>
+    </div>`).join('');
+}
+
+function exportExcel() {
+  if (!hist.length) { showToast('Sin registros para exportar'); return; }
+  const rows = hist.map(r => ({
+    'Fecha': r.fecha, 'Hora': r.hora_reg, 'Supervisor': r.supervisor, 'Turno': r.turno,
+    'Origen': r.origen, 'Patente': r.patente, 'Sello': r.sello,
+    'Hora llegada': r.hora_llegada, 'Hora salida': r.hora_salida,
+    'Bandejas': r.bandejas, 'Merma': r.merma, 'Pallets': r.pallets,
+    'Guías': r.guias.map(g=>`${g.num}:${g.bandejas}/${g.merma}`).join(' | ')
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Recepciones');
+  XLSX.writeFile(wb, `recepciones_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3200);
+}
+
+initKeyUI();
+renderGuias();
+</script>
+</body>
+</html>
